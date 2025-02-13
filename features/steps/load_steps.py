@@ -5,7 +5,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-# https://www.apache.org/licenses/LICENSE-2.0
+#     https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,9 +19,10 @@ Product Steps
 
 Steps file for products.feature
 
-For information on Waiting until elements are present in the HTML see:
+For information on waiting until elements are present in the HTML see:
     https://selenium-python.readthedocs.io/waits.html
 """
+
 import requests
 from behave import given
 
@@ -32,21 +33,25 @@ HTTP_204_NO_CONTENT = 204
 
 @given('the following products')
 def step_impl(context):
-    """ Delete all Products and load new ones """
-    #
-    # List all of the products and delete them one by one
-    #
+    """Delete all Products and load new ones from background data."""
+    # Build the REST endpoint for products using the base URL from context
     rest_endpoint = f"{context.base_url}/products"
+    
+    # Retrieve all existing products and delete them one by one
     context.resp = requests.get(rest_endpoint)
-    assert(context.resp.status_code == HTTP_200_OK)
+    assert context.resp.status_code == HTTP_200_OK, "Failed to retrieve products."
     for product in context.resp.json():
         context.resp = requests.delete(f"{rest_endpoint}/{product['id']}")
-        assert(context.resp.status_code == HTTP_204_NO_CONTENT)
-
-    #
-    # load the database with new products
-    #
+        assert context.resp.status_code == HTTP_204_NO_CONTENT, f"Failed to delete product {product['id']}."
+    
+    # Load new products from background data provided in context.table
     for row in context.table:
-        #
-        # ADD YOUR CODE HERE TO CREATE PRODUCTS VIA THE REST API
-        #
+        payload = {
+            "name": row['name'],
+            "description": row['description'],
+            "price": row['price'],
+            "available": row['available'] in ['True', 'true', '1'],
+            "category": row['category']
+        }
+        context.resp = requests.post(rest_endpoint, json=payload)
+        assert context.resp.status_code == HTTP_201_CREATED, f"Failed to create product: {payload}"
